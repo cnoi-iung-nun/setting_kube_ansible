@@ -1,0 +1,55 @@
+---
+- name: 도커 과정 관리 플레이북
+  hosts: servers
+  vars_files: 
+    - files/extension.list
+  tasks:
+  - name: /etc/hosts 파일 설정
+    copy:
+      src: files/hosts
+      dest: /etc/hosts
+
+  - name:  SElinux 기능 설정 -permissive
+    include_tasks: tasks/selinux.yml
+
+  - name: 방화벽 내리기
+    include_tasks: tasks/firewall.yaml
+
+  - name: 확장 기능 설치 및 설정
+    include_tasks: tasks/extension.yaml
+
+  - name: PS1 변수 설정 및 zsh 설치
+    include_tasks: tasks/ps1.yaml  
+
+  - name: 바탕화면 아이콘 생성
+    copy:
+      src: "{{ item }}" 
+      dest: ~/바탕화면/
+    with_items:
+      - "/usr/share/applications/org.gnome.Terminal.desktop" 
+      - "/usr/share/applications/org.gnome.gedit.desktop" 
+      # 터미널 아이콘 
+
+      #"(node1,2,3) GUI -> TUI 환경으로 전환"
+  - name: multi-user.target 으로 전환 -default.target 삭제
+    file:
+      path: /etc/systemd/system/default.target
+      state: absent
+    when: gui == false
+
+  - name: multi-user.target으로 전환 - defulat.target 링크 생성
+    file:
+      src: /urs/lib/systemd/system/multi-user.target
+      dest: /etc/systemd/system/default.target
+      state: link
+    when: gui == false
+    
+  - name: multi-user.target 으로 전환 현재 상태 변경
+    command: 
+      cmd: systemctl isolate multi-user.target    
+    when: gui == false
+  
+  - name: vimrc 배포
+    copy:
+      src: files/vimrc
+      dest: ~/.vimrc
